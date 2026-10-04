@@ -1,0 +1,19 @@
+###############################################################################
+#  terraform.tfvars.example
+#
+#  Copy this file to terraform.tfvars and fill in your values.
+#  terraform.tfvars is git-ignored — never commit it.
+#
+#    cp terraform.tfvars.example terraform.tfvars
+###############################################################################
+
+# ─── Azure Subscription ──────────────────────────────────────────────────────
+# Your Azure Subscription ID (get it with: az account show --query id -o tsv)
+# Alternative: export TF_VAR_subscription_id="<id>"
+#          or: export ARM_SUBSCRIPTION_ID="<id>"
+subscription_id = "<your-subscription-id>"
+
+# ─── Deployer IP ─────────────────────────────────────────────────────────────
+# Your current public IP — grants temporary access to Key Vault and Storage
+# during terraform apply. Get it with: curl -s ifconfig.me
+deployer_ip = "<your-public-ip>"
