@@ -203,7 +203,7 @@ terraform destroy
 ## 🧩 Related Repository
 
 This infrastructure repo is used alongside the application stack:
-👉 [`azure-private-ai-cicd`](https://github.com/<your-user>/azure-private-ai-cicd) — Docker Compose microservices + GitHub Actions CI/CD pipeline
+👉 [`azure-private-ai-cicd`](https://github.com/adrian-olias/azure-private-ai-cicd) — Docker Compose microservices + GitHub Actions CI/CD pipeline
 
 ---
 
