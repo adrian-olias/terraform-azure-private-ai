@@ -1,212 +1,124 @@
-# 🏗️ Azure Private AI Lab — Terraform Infrastructure
+# Azure Private AI Lab — Terraform
 
-> **Portfolio project.** Infrastructure-as-Code for a **secure, private AI platform** on Azure,
-> deployed from scratch with Terraform. Zero public exposure — VM isolated behind Bastion / Cloudflare Tunnel.
+[![terraform](https://github.com/adrian-olias/terraform-azure-private-ai/actions/workflows/terraform-ci.yml/badge.svg)](https://github.com/adrian-olias/terraform-azure-private-ai/actions/workflows/terraform-ci.yml)
 
----
+A private GPU VM on Azure for AI workloads. No public IP, no inbound ports, no stored secrets.
 
-## 📐 Architecture
+```mermaid
+flowchart LR
+    subgraph vnet["VNet · 10.1.0.0/16"]
+        subgraph compute["snet-compute"]
+            vm["GPU VM<br/>NVIDIA T4"]
+        end
+        subgraph endpoints["snet-endpoints"]
+            pe["Private endpoints"]
+        end
+    end
 
-```
-┌────────────────────────────────────────────────────────────────────┐
-│  Resource Group: rg-ai-lab-001  (spaincentral / adjustable)        │
-│                                                                    │
-│  ┌──────────────────────────────────────────┐                      │
-│  │  VNet: vnet-ai-lab (10.0.0.0/16)         │                      │
-│  │                                          │                      │
-│  │  ┌────────────────────────────────────┐  │  ┌─────────────────┐ │
-│  │  │ snet-compute-001  (10.0.1.0/24)   │  │  │  Storage        │ │
-│  │  │                                    │  │  │  Account (LRS)  │ │
-│  │  │  ┌──────────────────────────────┐  │  │  │                 │ │
-│  │  │  │ vm-ai-engine-001             │──┼──┼─►│ docs container  │ │
-│  │  │  │ Ubuntu 22.04 + NVIDIA GPU    │  │  │  │ (Blob Reader)   │ │
-│  │  │  │ Docker + NVIDIA Toolkit      │  │  │  │                 │ │
-│  │  │  │ System-assigned MI  ─────────┼──┼──┼─►│                 │ │
-│  │  │  └──────────────────────────────┘  │  │  └─────────────────┘ │
-│  │  │                                    │  │                      │
-│  │  │  NSG: nsg-ai-lab                   │  │  ┌─────────────────┐ │
-│  │  │  ✅ SSH (22) — deployer IP only    │  │  │  Key Vault      │ │
-│  │  │  🔒 All other traffic blocked      │  │  │  (standard)     │ │
-│  │  └────────────────────────────────────┘  │  └─────────────────┘ │
-│  │                                          │                      │
-│  │  ┌────────────────────────────────────┐  │  ┌─────────────────┐ │
-│  │  │ snet-private-endpoint (10.0.2.0/24)│  │  │  ACR (Basic)    │ │
-│  │  │  Private Endpoints → Storage + KV  │  │  │  Managed ID     │ │
-│  │  └────────────────────────────────────┘  │  │  AcrPull role   │ │
-│  └──────────────────────────────────────────┘  └─────────────────┘ │
-└────────────────────────────────────────────────────────────────────┘
-
-Bootstrap (rg-tf-bootstrap-001)
-  └── Storage Account → tfstate blob container
+    vm --> pe --> st[("Storage")] & kv["Key Vault"]
+    vm -- "pull" --> acr["Container Registry"]
+    gh(["GitHub Actions"]) -- "OIDC · push" --> acr
 ```
 
----
+| | |
+|---|---|
+| **Network** | One VNet, two subnets, one NSG per subnet. Every NSG denies inbound by default |
+| **Compute** | The VM has a private IP only. It is managed with `az vm run-command`, so it needs no SSH |
+| **Data** | Storage and Key Vault are reachable only through private endpoints, with Entra ID and RBAC only |
+| **Identity** | Managed identity for the VM, one read role per service. OIDC for GitHub Actions |
 
-## 📁 Repository Structure
+## Structure
 
 ```
-terraform/
-│
-├── bootstrap/                          # 🔧 Remote Terraform state setup (run once)
-│   └── environment/
-│       └── lab/
-│           ├── provider.tf             # AzureRM provider (local state)
-│           ├── tfstate_storage_account.tf  # Storage Account for tfstate
-│           ├── variables.tf            # Bootstrap variables
-│           └── README.md
-│
-├── manifests/                          # 🚀 Environment deployment
-│   └── environment/
-│       └── lab/
-│           ├── provider.tf             # Provider + remote backend
-│           ├── main.tf                 # Calls the environment_group module
-│           ├── variables.tf            # Environment variables (no secrets)
-│           ├── terraform.tfvars.example  # ✅ Template — copy to terraform.tfvars
-│           └── outputs.tf              # Deployment outputs
-│
-└── modules/
-    └── environment_group/              # 📦 Reusable module
-        ├── main.tf                     # Resource Group + data sources
-        ├── network.tf                  # VNet + Subnets + NSG rules
-        ├── storage_account.tf          # Storage Account + blob container
-        ├── virtual_machine.tf          # VM + NIC + Managed Identity
-        ├── acr.tf                      # Azure Container Registry
-        ├── key_vault.tf                # Key Vault + access policies
-        ├── roles.tf                    # RBAC assignments
-        ├── github.tf                   # Service Principal for CI/CD
-        ├── variables.tf                # Module input variables
-        ├── outputs.tf                  # Module outputs
-        └── cloud-init/
-            └── bastion-install-gpu.sh  # Docker + NVIDIA Container Toolkit
+infra/
+├── bootstrap/                       remote state storage (run once, local state)
+├── environments/
+│   └── lab/                         root module: the whole workload, one state
+├── modules/                         one module per Azure resource
+│   ├── resource_group/
+│   ├── virtual_network/
+│   ├── subnet/
+│   ├── network_security_group/      NSG, deny-all inbound unless allowed
+│   ├── subnet_network_security_group_association/
+│   ├── network_interface/           NIC with a private IP only
+│   ├── linux_vm/                    Ubuntu VM with managed identity
+│   ├── private_dns_zone/
+│   ├── private_dns_zone_vnet_link/
+│   ├── private_endpoint/            endpoint registered in a private DNS zone
+│   ├── storage_account/             private, Entra ID only
+│   ├── storage_container/
+│   ├── key_vault/                   private, RBAC only
+│   ├── container_registry/          admin user always off
+│   ├── role_assignment/
+│   └── github_oidc/                 GitHub Actions identity, no secrets
+└── values/
+    └── lab/                         one .auto.tfvars per .tf file, plus backend.hcl
+scripts/vm/                          GPU drivers and Docker setup
 ```
 
----
+### How the root module is written
 
-## 🚀 Deployment Guide
+- Each file in `environments/lab/` calls **one module** and is named after it. The module comes first, then the file's own variables.
+- Every module is called with `for_each` over a map, so adding a resource means adding an entry to a value file, not editing code.
+- The root has **no hardcoded values**. Names, CIDRs, SKUs, ports and tags live in `infra/values/lab/<same name>.auto.tfvars`.
+- Map keys are the Azure names (`vm-privateai-lab`, `snet-compute`), so Terraform and the portal use the same names. Resources point to each other by those keys (`resource_group_key = "rg-privateai-lab"`). Storage, Key Vault and ACR use the key as a prefix, because Azure needs a random suffix to make the name globally unique.
+- Only what cannot be a variable stays in code: provider versions and provider settings. The backend values are in `values/lab/backend.hcl`.
 
-### Prerequisites
+Names follow `<type>-<project>-<environment>`, e.g. `rg-privateai-lab` or `vm-privateai-lab`. Everything that changes between environments is in `infra/values/lab/`.
 
-| Tool        | Min version | Install |
-|-------------|-------------|---------|
-| Terraform   | >= 1.5.0    | [terraform.io](https://developer.hashicorp.com/terraform/install) |
-| Azure CLI   | >= 2.50     | `winget install Microsoft.AzureCLI` |
-| SSH key     | RSA 4096    | `ssh-keygen -t rsa -b 4096` |
+## Decisions
 
-### Step 1 — Azure login
+| Decision | Why | What I would change at scale |
+|---|---|---|
+| One state for the lab | One workload. One `apply`, no cross-state lookups | Separate states per environment, or hub-spoke with peering for shared network services |
+| No Azure Firewall or NAT Gateway | Cost of a lab | Firewall in a hub and a NAT Gateway for egress. The VM's default outbound access would be disabled |
+| Private endpoints, no public access | Data never crosses the public internet | Same |
+| OIDC instead of client secrets | Nothing to store, rotate or leak | Same |
+| RBAC per service, managed identity for the VM | Least privilege: each identity gets one role on one resource | Same, with custom roles where the built-in ones are too broad |
+| Modules per Azure resource | Each piece can be read and reused alone | Same |
+| Security settings fixed inside modules | No public access, no keys, no admin user and deny-all NSGs cannot be turned off by a caller. Everything else is a variable with a safe default | Same |
+
+## Deploy
 
 ```bash
 az login
-az account set --subscription "<your-subscription-name-or-id>"
+export ARM_SUBSCRIPTION_ID="$(az account show --query id -o tsv)"
 
-# Verify
-az account show
+# 1. Remote state (once)
+terraform -chdir=infra/bootstrap init
+terraform -chdir=infra/bootstrap apply
+STATE_SA="$(terraform -chdir=infra/bootstrap output -raw storage_account_name)"
+
+# 2. Lab. The values are not loaded automatically, so every file in values/lab is passed explicitly
+VARS=(); for f in "$PWD"/infra/values/lab/*.tfvars; do VARS+=(-var-file="$f"); done
+terraform -chdir=infra/environments/lab init \
+  -backend-config="$PWD/infra/values/lab/backend.hcl" \
+  -backend-config="storage_account_name=$STATE_SA"
+terraform -chdir=infra/environments/lab apply "${VARS[@]}"
+
+# 3. GPU drivers + Docker on the VM (no SSH needed). Outputs are maps by key, read here with jq
+az vm run-command invoke \
+  -g "$(terraform -chdir=infra/environments/lab output -json resource_group_names | jq -r '."rg-privateai-lab"')" \
+  -n "$(terraform -chdir=infra/environments/lab output -json vm_names | jq -r '."vm-privateai-lab"')" \
+  --command-id RunShellScript --scripts @scripts/vm/install-gpu-docker.sh
 ```
 
-### Step 2 — Bootstrap (run once)
+`terraform -chdir=infra/environments/lab output github_oidc` prints the values the app repo needs for `azure/login`, by key.
 
-Creates the remote Storage Account for Terraform state:
+To destroy the lab: `terraform -chdir=infra/environments/lab destroy "${VARS[@]}"`. The bootstrap state storage has `prevent_destroy` on purpose.
 
-```bash
-cd terraform/bootstrap/environment/lab/
+## Production notes
 
-# Subscription is read automatically from the active az CLI context
-terraform init
-terraform plan
-terraform apply
-```
+To keep the lab cheap and simple, a few things are left out on purpose:
 
-### Step 3 — Configure deployer IP
+- **Azure Firewall** and **NAT Gateway** for egress, instead of Azure default outbound access.
+- **Premium ACR**, so the registry can have its own private endpoint.
+- **Key Vault purge protection** (disabled here so the lab can be recreated).
 
-Create `terraform/manifests/environment/lab/terraform.tfvars` (git-ignored):
+## Related
 
-```bash
-cp terraform/manifests/environment/lab/terraform.tfvars.example \
-   terraform/manifests/environment/lab/terraform.tfvars
-# Then edit terraform.tfvars with your values
-```
+[`azure-private-ai-cicd`](https://github.com/adrian-olias/azure-private-ai-cicd): the app and its pipeline.
 
-```hcl
-subscription_id = "<your-subscription-id>"
-deployer_ip     = "<your-current-public-ip>"  # curl ifconfig.me
-```
+## License
 
-### Step 4 — Deploy infrastructure
-
-```bash
-cd terraform/manifests/environment/lab/
-terraform init
-terraform plan
-terraform apply
-```
-
-### Step 5 — Connect to the VM
-
-```bash
-# Wait ~5 min for cloud-init + reboot
-ssh azureaiuser@<VM_PRIVATE_IP_OR_BASTION> -i ~/.ssh/id_rsa
-
-# Verify GPU + Docker
-nvidia-smi
-docker info
-```
-
----
-
-## 🔒 Security Measures
-
-| Measure | Detail |
-|---------|--------|
-| **No public IP on VM** | Isolated VM, accessible only via Azure Bastion or Cloudflare Tunnel |
-| **NSG restrictive** | SSH (22) from deployer IP only; all else blocked |
-| **No passwords** | SSH key-only authentication (RSA 4096) |
-| **Managed Identity** | VM accesses Storage without keys or tokens |
-| **Least privilege** | `Storage Blob Data Reader` role only |
-| **TLS 1.2** | Encrypted communication with Storage Account |
-| **HTTPS enforced** | No HTTP connections permitted to Storage |
-| **Private Blobs** | No public blob access |
-| **Private Endpoints** | Storage + Key Vault not exposed to internet |
-| **Remote state** | tfstate in Azure Storage with blob versioning |
-| **No hardcoded secrets** | Subscription ID and IPs passed via env vars or git-ignored tfvars |
-
----
-
-## 💰 Cost Optimization
-
-| Resource | Choice | Reason |
-|----------|--------|--------|
-| Storage (data) | LRS | Minimum redundancy for lab |
-| Storage (state) | LRS | Sufficient for tfstate |
-| No public IP | — | Removed entirely (Bastion/Tunnel pattern) |
-| VM Size | `Standard_NC4as_T4_v3` | NVIDIA T4 GPU — best performance/cost ratio |
-
-> **💡 Tip:** Deallocate the VM when not in use:
-> ```bash
-> az vm deallocate -g rg-ai-lab-001 -n vm-ai-engine-001
-> ```
-
----
-
-## 🗑️ Destroy
-
-```bash
-# 1. Destroy main infrastructure
-cd terraform/manifests/environment/lab/
-terraform destroy
-
-# 2. Destroy bootstrap (only if you no longer need the state backend)
-cd terraform/bootstrap/environment/lab/
-terraform destroy
-```
-
----
-
-## 🧩 Related Repository
-
-This infrastructure repo is used alongside the application stack:
-👉 [`azure-private-ai-cicd`](https://github.com/adrian-olias/azure-private-ai-cicd) — Docker Compose microservices + GitHub Actions CI/CD pipeline
-
----
-
-## 📄 License
-
-MIT — Free to use as a portfolio reference or starting point for your own projects.
+[MIT](LICENSE)

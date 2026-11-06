@@ -1,0 +1,16 @@
+name: terraform
+
+on: [push, pull_request]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+      - run: terraform fmt -check -recursive
+      - run: |
+          for dir in infra/bootstrap infra/environments/lab; do
+            terraform -chdir=$dir init -backend=false
+            terraform -chdir=$dir validate
+          done
