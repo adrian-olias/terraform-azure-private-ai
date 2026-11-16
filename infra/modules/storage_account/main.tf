@@ -12,7 +12,7 @@ resource "azurerm_storage_account" "this" {
 
   # Guardrail: workloads use the private endpoint. The public endpoint stays off unless operator IPs
   # are listed, and even then it denies everything except those IPs
-  public_network_access_enabled = length(var.allowed_ips) > 0
+  public_network_access = length(var.allowed_ips) > 0 ? "Enabled" : "Disabled"
 
   network_rules {
     default_action = "Deny"
