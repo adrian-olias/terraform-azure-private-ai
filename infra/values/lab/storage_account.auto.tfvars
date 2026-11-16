@@ -9,6 +9,6 @@ storage_accounts = {
     account_kind                    = "StorageV2"
     account_tier                    = "Standard"
     replication_type                = "LRS"
-    operator_access                 = true 
+    operator_access                 = true
   }
 }
