@@ -3,13 +3,8 @@ variable "name" {
   type        = string
 }
 
-variable "resource_group_name" {
-  description = "Resource group of the private DNS zone."
-  type        = string
-}
-
-variable "private_dns_zone_name" {
-  description = "Private DNS zone to link."
+variable "private_dns_zone_id" {
+  description = "ID of the private DNS zone to link."
   type        = string
 }
 
@@ -29,3 +24,4 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+

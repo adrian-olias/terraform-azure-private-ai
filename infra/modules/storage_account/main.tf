@@ -20,3 +20,4 @@ resource "azurerm_storage_account" "this" {
     ip_rules       = var.allowed_ips
   }
 }
+

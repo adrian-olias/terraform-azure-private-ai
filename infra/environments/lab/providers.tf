@@ -4,7 +4,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "4.81.0"
+      version = "5.14.0"
     }
     azuread = {
       source  = "hashicorp/azuread"
@@ -35,3 +35,4 @@ provider "azuread" {}
 
 # Reads GitHub's numeric IDs. Authenticates with the GITHUB_TOKEN environment variable
 provider "github" {}
+

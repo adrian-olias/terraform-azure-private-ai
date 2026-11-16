@@ -6,7 +6,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "4.81.0"
+      version = "5.14.0"
     }
     random = {
       source  = "hashicorp/random"
@@ -92,3 +92,4 @@ resource "azurerm_role_assignment" "deployer" {
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = data.azurerm_client_config.current.object_id
 }
+
