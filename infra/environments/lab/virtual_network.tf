@@ -4,7 +4,7 @@ module "virtual_network" {
 
   name                = each.value.name
   resource_group_name = module.resource_group[each.value.resource_group_key].name
-  location            = local.location
+  location            = var.location
   address_space       = each.value.address_space
   tags                = merge(local.tags, each.value.tags)
 }

@@ -12,7 +12,7 @@ module "private_endpoint" {
 
   name                = each.value.name
   resource_group_name = module.resource_group[each.value.resource_group_key].name
-  location            = local.location
+  location            = var.location
   subnet_id           = module.subnet[each.value.subnet_key].id
   resource_id         = local.private_endpoint_targets[each.value.target_type][each.value.target_key]
   subresource         = each.value.subresource

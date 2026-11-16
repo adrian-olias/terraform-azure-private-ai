@@ -1,6 +1,11 @@
-# Remote state for this environment. Backend blocks cannot use variables, so the values come from
-# values/lab/backend.hcl and from the CLI (the storage account name is created by bootstrap):
-#   terraform init -backend-config=../../values/lab/backend.hcl -backend-config="storage_account_name=$STATE_SA"
+# Remote state for this environment. The state storage is created by infra/bootstrap, which
+# gives its account a random suffix: paste the storage_account_name output below, then `terraform init`.
 terraform {
-  backend "azurerm" {}
+  backend "azurerm" {
+    resource_group_name  = "rg-privateai-tfstate"
+    storage_account_name = "REPLACE-ME"
+    container_name       = "tfstate"
+    key                  = "lab.tfstate"
+    use_azuread_auth     = true
+  }
 }

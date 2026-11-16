@@ -5,7 +5,7 @@ module "network_security_group" {
   name = each.value.name
 
   resource_group_name       = module.resource_group[each.value.resource_group_key].name
-  location                  = local.location
+  location                  = var.location
   deny_all_inbound_priority = each.value.deny_all_inbound_priority
 
   tags = merge(local.tags, each.value.tags)

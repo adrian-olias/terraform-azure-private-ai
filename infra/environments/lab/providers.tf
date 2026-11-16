@@ -14,9 +14,9 @@ terraform {
       source  = "hashicorp/random"
       version = "3.9.0"
     }
-    tls = {
-      source  = "hashicorp/tls"
-      version = "4.1.0"
+    github = {
+      source  = "integrations/github"
+      version = "6.6.0"
     }
   }
 }
@@ -32,3 +32,6 @@ provider "azurerm" {
 }
 
 provider "azuread" {}
+
+# Reads GitHub's numeric IDs. Authenticates with the GITHUB_TOKEN environment variable
+provider "github" {}

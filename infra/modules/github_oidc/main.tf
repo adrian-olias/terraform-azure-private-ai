@@ -4,6 +4,9 @@
 locals {
   github_issuer   = "https://token.actions.githubusercontent.com"
   entra_audiences = ["api://AzureADTokenExchange"]
+
+  owner = split("/", var.repository)[0]
+  repo  = split("/", var.repository)[1]
 }
 
 resource "azuread_application" "this" {
@@ -16,11 +19,15 @@ resource "azuread_service_principal" "this" {
   owners    = var.owners
 }
 
-# Only workflows running on this repository and branch can log in
+# One credential per workflow context allowed to log in, e.g. "pull_request" or "environment:Production".
+# Only this repository can use them.
 resource "azuread_application_federated_identity_credential" "this" {
+  for_each = var.subjects
+
   application_id = azuread_application.this.id
-  display_name   = "github-${var.branch}"
+  display_name   = "github-${each.key}"
   issuer         = local.github_issuer
-  subject        = "repo:${var.repository}:ref:refs/heads/${var.branch}"
-  audiences      = local.entra_audiences
+  # GitHub's token carries the owner and repository IDs, not only their names
+  subject   = "repo:${local.owner}@${var.owner_id}/${local.repo}@${var.repository_id}:${each.value}"
+  audiences = local.entra_audiences
 }

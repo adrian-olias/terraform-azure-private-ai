@@ -22,6 +22,10 @@ output "acr_login_servers" {
   value = { for key, m in module.container_registry : key => m.login_server }
 }
 
+output "container_registry_names" {
+  value = { for key, m in module.container_registry : key => m.name }
+}
+
 # Repository variables for azure/login in GitHub Actions (none of them is a secret)
 output "github_oidc" {
   value = {

@@ -1,8 +1,7 @@
 # Shared by every file in this environment. Each other file calls one module and is named after it.
 
 locals {
-  location = var.location
-  tags     = var.tags
+  tags = var.tags
 }
 
 data "azurerm_client_config" "current" {}
@@ -24,4 +23,11 @@ variable "tags" {
 
 variable "suffix_length" {
   type = number
+}
+
+# Public IPs allowed to reach Storage and Key Vault from outside the VNet, to upload documents and set
+# secrets. Not in a value file on purpose: pass it at apply time. Empty keeps both private-endpoint only
+variable "operator_ips" {
+  type    = list(string)
+  default = []
 }

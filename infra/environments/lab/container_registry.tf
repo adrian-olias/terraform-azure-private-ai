@@ -4,7 +4,7 @@ module "container_registry" {
 
   name                = "${each.value.name}${random_string.suffix.result}"
   resource_group_name = module.resource_group[each.value.resource_group_key].name
-  location            = local.location
+  location            = var.location
   admin_enabled       = each.value.admin_enabled
 
   sku = each.value.sku

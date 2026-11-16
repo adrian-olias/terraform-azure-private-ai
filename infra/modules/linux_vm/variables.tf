@@ -19,7 +19,7 @@ variable "network_interface_id" {
 }
 
 variable "size" {
-  description = "VM size, e.g. Standard_NC4as_T4_v3."
+  description = "VM size, e.g. Standard_D4s_v4."
   type        = string
 }
 
@@ -27,6 +27,16 @@ variable "admin_username" {
   description = "Local admin user."
   type        = string
   default     = "azureaiuser"
+}
+
+variable "admin_ssh_public_key" {
+  description = "Public SSH key of the admin user, created by the root module."
+  type        = string
+}
+
+variable "custom_data" {
+  description = "Base64 cloud-init script that runs on first boot, provided by the root module."
+  type        = string
 }
 
 variable "source_image_reference" {

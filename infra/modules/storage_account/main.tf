@@ -5,9 +5,18 @@ resource "azurerm_storage_account" "this" {
   account_kind                    = var.account_kind
   account_tier                    = var.account_tier
   account_replication_type        = var.replication_type
-  public_network_access_enabled   = var.public_network_access_enabled
   shared_access_key_enabled       = var.shared_access_key_enabled
   allow_nested_items_to_be_public = var.allow_nested_items_to_be_public
   min_tls_version                 = var.min_tls_version
   tags                            = var.tags
+
+  # Guardrail: workloads use the private endpoint. The public endpoint stays off unless operator IPs
+  # are listed, and even then it denies everything except those IPs
+  public_network_access_enabled = length(var.allowed_ips) > 0
+
+  network_rules {
+    default_action = "Deny"
+    bypass         = ["AzureServices"]
+    ip_rules       = var.allowed_ips
+  }
 }

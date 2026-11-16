@@ -3,7 +3,7 @@ module "resource_group" {
   for_each = var.resource_groups
 
   name     = each.value.name
-  location = local.location
+  location = var.location
   tags     = merge(local.tags, each.value.tags)
 }
 

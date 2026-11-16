@@ -1,10 +1,5 @@
 # Azure requires an SSH key, but nobody logs in: the VM is managed with `az vm run-command`.
-# The private key only lives in the remote state.
-resource "tls_private_key" "this" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
-}
-
+# The public key and the cloud-init script come from the root module.
 resource "azurerm_linux_virtual_machine" "this" {
   name                  = var.name
   location              = var.location
@@ -14,13 +9,14 @@ resource "azurerm_linux_virtual_machine" "this" {
   network_interface_ids = [var.network_interface_id]
   patch_assessment_mode = var.patch_assessment_mode
   tags                  = var.tags
+  custom_data           = var.custom_data
 
   # Guardrail: SSH keys only, never passwords
   disable_password_authentication = true
 
   admin_ssh_key {
     username   = var.admin_username
-    public_key = tls_private_key.this.public_key_openssh
+    public_key = var.admin_ssh_public_key
   }
 
   os_disk {

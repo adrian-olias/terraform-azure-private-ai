@@ -4,4 +4,8 @@ modules/**/.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
 *.tfplan
+tfplan
 crash.log
+
+# Your public IP for the lab (see README)
+infra/values/lab/operator.auto.tfvars

@@ -48,9 +48,15 @@ variable "replication_type" {
   }
 }
 
-variable "public_network_access_enabled" {
-  description = "Allow public network access. Off means private endpoints only."
-  type        = bool
+variable "allowed_ips" {
+  description = "Public IPv4 addresses allowed through the public endpoint, e.g. an operator uploading documents. Empty means private endpoint only."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for ip in var.allowed_ips : can(regex("^(\\d{1,3}\\.){3}\\d{1,3}$", ip))])
+    error_message = "allowed_ips takes plain IPv4 addresses, without a /32."
+  }
 }
 
 variable "shared_access_key_enabled" {
